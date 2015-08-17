@@ -1,0 +1,42 @@
+##基于Zookeeper的统一配置服务说明##
+**Zookeeper**是Apache Hadoop下的一个子项目，作为一个分布式服务框架，他主要用来解决分布式应用中经常遇到的一些数据管理员问题，如：
+
+ - 统一命名服务
+ - 状态同步服务
+ - 集群管理
+ - 分布式应用配置项管理等
+
+**Zookeeper**主要用来解决分布式集群应用中应用系统的一致性问题，它能提供基于类似于文件系统的目录节点树方式存储数据，但是Zookeeper并不是用来专门存储数据的，他的作用主要是用来维护和监控你存储的数据的状态变化。本项目便是依据这个特性来构建统一配置服务。
+
+##如何使用##
+###程序代码###
+1. 添加base-config插件，具体：在BuildConfig.groovy最末尾添加 `grails.plugin.location.baseConfig="../../plugins/base-config"`
+2. 目前Zookeeper服务部署在`192.168.181.39`上，因此你需要在grails-app/conf/config.properties加上一条配置     `cube.framework.zooKeeper.connectionStr=192.168.181.39`，因为其默认端口是2181
+3. 在项目下grails-app/conf下添加一个文件，命名为 `ConfigurationConfig.groovy`,内容如base-config插件下`grails-app/conf/DefaultConfigurationConfig.groovy`
+4. 第2,3步骤可以使用`setup-config`命令完成。如：在terminal中输入`grails setup-config`
+###配置页面###
+1. **打开**[http://192.168.181.39:8181](http://192.168.181.39:8181 "统一配置服务")
+2. **查看：**左边树便是Zookeeper的配置服务树，双击或者选中某节点在点击详情按钮，即可查看该节点的属性值。
+3. **增加：**选中某节点，点击新增，则是在该节点下增加一子节点，并输入配置属性名称的值。
+4. **复制，粘贴：** 选择你需要复制的节点A，选择复制，再选择你需要粘贴到的节点B，选择粘贴。则节点A及其子节点都被复制到节点B下。
+5.  **删除，删除类似以上操作**
+###代码清单###
+    cube.config = [
+        defaultProvider: false,
+        providers      : [
+                ['provider': ZooKeeperConfigProvider.class, 'identityType': ZooKeeperConfigProvider.ZOOKEEPER_APPLICATION_IDENTIFIER_IP, 'identityArg': null],
+                ['provider': ZooKeeperConfigProvider.class, 'identityType': ZooKeeperConfigProvider.ZOOKEEPER_APPLICATION_IDENTIFIER_FILE, 'identityArg': '../zookeeperIdentifier.txt'],
+                ['provider': ZooKeeperConfigProvider.class],
+				['provider': DefaultConfigProvider.class]
+        ]
+	]
+
+
+
+
+defaultProvider设置为true，表示使用默认的配置服务，即优先从config.properties中读取。
+providers提供一个得到属性值的List，依次向下从各个Provider实例中获取属性值。
+考虑到不同的机器获取的配置属性值不同，和同一机器的不同Web容器的配置属性值不同，ZooKeeperConfigProvider提供了通过IP和文件key值来作为标识区分同一属性名的不同属性值。
+identityType 为 `ZooKeeperConfigProvider.ZOOKEEPER_APPLICATION_IDENTIFIER_IP`，则你的标识为你机器的IP地址。
+identityType 为 `ZooKeeperConfigProvider.ZOOKEEPER_APPLICATION_IDENTIFIER_FILE`，此时你还需要配置identityArg值，该值为key值文件的路径，文件中的内容为你的标识。
+如果要使用标识，则需要在Zookeeper中额外配置属性值。格式为`/identity/key`，这里的identity则是上述的标识值，key则是你的属性值。
